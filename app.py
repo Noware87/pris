@@ -5,13 +5,14 @@ import hmac
 import hashlib
 import json
 import requests
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, abort
 
-CLIENT_ID   = os.environ.get("TUYA_CLIENT_ID", "").strip()
+CLIENT_ID     = os.environ.get("TUYA_CLIENT_ID", "").strip()
 CLIENT_SECRET = os.environ.get("TUYA_CLIENT_SECRET", "").strip()
-DEVICE_ID   = os.environ.get("TUYA_DEVICE_ID", "").strip()
-REGION      = os.environ.get("TUYA_REGION", "eu").strip()
-DP_CODE     = os.environ.get("TUYA_DP_CODE", "switch").strip()
+DEVICE_ID     = os.environ.get("TUYA_DEVICE_ID", "").strip()
+REGION        = os.environ.get("TUYA_REGION", "eu").strip()
+DP_CODE       = os.environ.get("TUYA_DP_CODE", "switch").strip()
+SECRET_TOKEN  = os.environ.get("SECRET_TOKEN", "").strip()
 
 REGION_MAP = {
     "eu": "https://openapi.tuyaeu.com",
@@ -23,6 +24,13 @@ BASE = REGION_MAP.get(REGION.lower(), REGION_MAP["eu"])
 
 _access_token = None
 _token_expire = 0
+
+def _require_token():
+    if not SECRET_TOKEN:
+        return
+    token = request.args.get("token") or request.headers.get("X-Auth-Token")
+    if token != SECRET_TOKEN:
+        abort(401)
 
 def _hmac_sign(message: str, secret: str) -> str:
     return hmac.new(secret.encode("utf-8"), msg=message.encode("utf-8"), digestmod=hashlib.sha256).hexdigest().upper()
@@ -92,13 +100,12 @@ def _ensure_config():
     if missing:
         raise RuntimeError("Missing env: " + ", ".join(missing))
 
-def tuya_switch(value: bool):
+def tuya_command(code: str, value):
     _ensure_config()
     _get_token()
-    body = {"commands":[{"code": DP_CODE, "value": bool(value)}]}
+    body = {"commands":[{"code": code, "value": value}]}
     path = f"/v1.0/devices/{DEVICE_ID}/commands"
-    res = _request("POST", path, body=body, need_token=True)
-    return res
+    return _request("POST", path, body=body, need_token=True)
 
 def tuya_status():
     _ensure_config()
@@ -111,32 +118,33 @@ app = Flask(__name__)
 
 @app.route("/")
 def root():
-    return jsonify(ok=True, device=DEVICE_ID, region=REGION, dp_code=DP_CODE)
-
-@app.route("/ac/on")
-def ac_on():
-    try:
-        r = tuya_switch(True)
-        return jsonify(ok=True, action="on", tuya=r)
-    except Exception as e:
-        return jsonify(ok=False, error=str(e)), 500
-
-@app.route("/ac/off")
-def ac_off():
-    try:
-        r = tuya_switch(False)
-        return jsonify(ok=True, action="off", tuya=r)
-    except Exception as e:
-        return jsonify(ok=False, error=str(e)), 500
+    return jsonify(ok=True, device=DEVICE_ID, region=REGION, dp_code=DP_CODE, secure=bool(SECRET_TOKEN))
 
 @app.route("/ac/status")
 def ac_status():
+    _require_token()
     try:
         r = tuya_status()
         return jsonify(ok=True, status=r)
     except Exception as e:
         return jsonify(ok=False, error=str(e)), 500
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "10000"))
-    app.run(host="0.0.0.0", port=port)
+@app.route("/ac/on")
+def ac_on():
+    _require_token()
+    try:
+        r = tuya_command(DP_CODE, True)
+        return jsonify(ok=True, action="on", tuya=r)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+@app.route("/ac/off")
+def ac_off():
+    _require_token()
+    try:
+        r = tuya_command(DP_CODE, False)
+        return jsonify(ok=True, action="off", tuya=r)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+@app.route("/ac/temp/<int:value>")
