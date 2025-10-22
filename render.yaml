@@ -1,0 +1,18 @@
+services:
+- type: web
+  name: tuya-flask-server
+  env: python
+  plan: free
+  buildCommand: pip install -r requirements.txt
+  startCommand: python app.py
+  envVars:
+  - key: TUYA_CLIENT_ID
+    sync: false
+  - key: TUYA_CLIENT_SECRET
+    sync: false
+  - key: TUYA_DEVICE_ID
+    sync: false
+  - key: TUYA_REGION
+    value: eu
+  - key: TUYA_DP_CODE
+    value: switch
