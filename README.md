@@ -1,15 +1,13 @@
-# Tuya Flask Server (Render.com Free)
+# Tuya Flask Server PLUS
 
-Endpoints:
-- `/ac/on`  -> turn device ON
-- `/ac/off` -> turn device OFF
-- `/ac/status` -> device datapoints
+Routes require ?token=YOURTOKEN if SECRET_TOKEN is set:
+- /ac/status?token=...
+- /ac/on?token=...
+- /ac/off?token=...
+- /ac/temp/25?token=...
+- /ac/mode/hot?token=...
+- /ac/fan/auto?token=...
+- /ac/swing/on?token=...
 
-Set env vars on Render:
-- TUYA_CLIENT_ID (Access ID)
-- TUYA_CLIENT_SECRET (Access Secret)
-- TUYA_DEVICE_ID (from Cloud Project -> Devices)
-- TUYA_REGION (eu/us/cn/in)
-- TUYA_DP_CODE (switch/switch_1/power)
-
-Deploy: New Web Service -> Upload this folder (or connect repo)
+Env:
+- TUYA_CLIENT_ID, TUYA_CLIENT_SECRET, TUYA_DEVICE_ID, TUYA_REGION, TUYA_DP_CODE, SECRET_TOKEN
