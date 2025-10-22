@@ -1,6 +1,6 @@
 services:
 - type: web
-  name: tuya-flask-server
+  name: tuya-flask-server-plus
   env: python
   plan: free
   buildCommand: pip install -r requirements.txt
@@ -16,3 +16,5 @@ services:
     value: eu
   - key: TUYA_DP_CODE
     value: switch
+  - key: SECRET_TOKEN
+    sync: false
